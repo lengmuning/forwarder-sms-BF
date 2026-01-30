@@ -5,6 +5,8 @@
 import { validateTimestamp, extractCode } from '../utils/validator.js';
 import { sendBarkNotification, buildNotificationContent } from '../utils/bark.js';
 import { sendFeishuNotification } from '../utils/feishu.js';
+import { sendWecomNotification } from '../utils/wecom.js';
+import { sendDingtalkNotification } from '../utils/dingtalk.js';
 import { checkRateLimit } from '../utils/rateLimit.js';
 
 /**
@@ -99,47 +101,55 @@ export async function handleSmsForward(request, env, url) {
 
     // 8. Debug 模式：只写 KV，不推送
     if (isDebug) {
-        console.log('Debug mode: skipping Bark push');
+        console.log('Debug mode: skipping all pushes');
         return jsonResponse({
             success: true,
             message: 'debug',
             code,
-            note: 'Bark push skipped in debug mode',
+            note: 'All pushes skipped in debug mode',
         });
     }
 
-    // 8. 发送飞书推送
+    // 8. 发送飞书 / 企业微信 / 钉钉 推送
     const title = code ? '📩 短信验证码' : '📩 新短信';
-    const feishuResult = await sendFeishuNotification(env, title, content, deviceId, code);
 
-    // 9. 发送 Bark 推送（可选，如果配置了 BARK_KEYS）
-    let barkResult = { success: false, pushed: 0 };
-    if (env.BARK_KEYS) {
-        const { title: barkTitle, body: notifyBody } = buildNotificationContent(code, content, deviceId);
-        const targetKeys = body.target && Array.isArray(body.target) ? body.target : null;
-        barkResult = await sendBarkNotification(env, barkTitle, notifyBody, targetKeys);
-    }
+    const targetKeys = body.target && Array.isArray(body.target) ? body.target : null;
+    const barkContent = buildNotificationContent(code, content, deviceId);
+    const barkPromise = env.BARK_KEYS
+        ? sendBarkNotification(env, barkContent.title, barkContent.body, targetKeys)
+        : Promise.resolve({ success: false, pushed: 0 });
+
+    const [feishuResult, wecomResult, dingtalkResult, barkResult] = await Promise.all([
+        sendFeishuNotification(env, title, content, deviceId, code),
+        sendWecomNotification(env, title, content, deviceId, code),
+        sendDingtalkNotification(env, title, content, deviceId, code),
+        barkPromise,
+    ]);
 
     // 判断推送结果
-    if (!feishuResult.success && !barkResult.success) {
+    if (!feishuResult.success && !wecomResult.success && !dingtalkResult.success && !barkResult.success) {
         console.error('All push channels failed');
         return jsonResponse({
             success: false,
             message: 'Push failed',
             errors: {
                 feishu: feishuResult.error,
+                wecom: wecomResult.error,
+                dingtalk: dingtalkResult.error,
                 bark: barkResult.errors,
             },
         }, 502);
     }
 
-    console.log(`SMS forwarded successfully: code=${code}, feishu=${feishuResult.success}, bark=${barkResult.pushed}`);
+    console.log(`SMS forwarded successfully: code=${code}, feishu=${feishuResult.success}, wecom=${wecomResult.success}, dingtalk=${dingtalkResult.success}, bark=${barkResult.pushed}`);
 
     return jsonResponse({
         success: true,
         message: 'forwarded',
         code,
         feishu: feishuResult.success,
+        wecom: wecomResult.success,
+        dingtalk: dingtalkResult.success,
         bark: barkResult.pushed,
     });
 }
