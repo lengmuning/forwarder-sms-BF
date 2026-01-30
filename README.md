@@ -1,6 +1,6 @@
 # SMS Forwarder Cloudflare Worker
 
-📱 将 iOS 短信验证码通过 Cloudflare Worker 转发到 Bark，实现多设备同步接收验证码。
+📱 将 iOS 短信验证码通过 Cloudflare Worker 转发到 Bark or Feishu，实现多设备同步接收验证码。
 
 ## 功能特性
 
