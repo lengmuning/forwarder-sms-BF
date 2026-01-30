@@ -1,0 +1,13 @@
+{
+  "name": "sms-forwarder-worker",
+  "version": "1.0.0",
+  "description": "Cloudflare Worker for SMS verification code forwarding via Bark",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  }
+}

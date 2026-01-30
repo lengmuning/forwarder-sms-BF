@@ -1,0 +1,23 @@
+name = "sms-forwarder"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+
+# KV Namespace binding
+# 部署前需要创建 KV namespace:
+# npx wrangler kv:namespace create SMS_CACHE
+# 然后将生成的 id 填入下方
+[[kv_namespaces]]
+binding = "SMS_CACHE"
+id = "505ec80464e04ef08dcf7d40bd8deb74"
+
+# 环境变量（非敏感信息）
+[vars]
+BARK_SERVER = "https://api.day.app"
+RATE_LIMIT = "10"
+DEBUG = "false"
+
+# 敏感信息使用 secrets:
+# npx wrangler secret put API_TOKEN
+# npx wrangler secret put BARK_KEYS
+# npx wrangler secret put FEISHU_WEBHOOK
+
